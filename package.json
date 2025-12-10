@@ -1,0 +1,27 @@
+{
+  "name": "cheese-mints",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "bundle": "npm run clean && tsx scripts/bundle.ts",
+    "clean": "rimraf [ dist ]",
+    "test": "npm run bundle && busted"
+  },
+  "keywords": [],
+  "author": "Jim Toth",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@permaweb/ao-loader": "^0.0.49",
+    "@permaweb/aoconnect": "^0.0.93",
+    "arweave": "^1.15.7",
+    "dotenv": "^17.2.3",
+    "rimraf": "^6.1.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1"
+  }
+}
