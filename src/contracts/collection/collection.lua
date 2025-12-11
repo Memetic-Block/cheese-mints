@@ -250,7 +250,17 @@ Handlers.add('View-State', 'View-State', function (msg)
   })
 end)
 
--- TODO -> Cheese-Mints-By-Address handler with points total
+Handlers.add('Get-Cheese-Mints-By-Address', 'Get-Cheese-Mints-By-Address', function (msg)
+  local json = require('json')
+  local address = msg.Tags['Address'] or msg.From
+  assertValidAddress(address)
+
+  ao.send({
+    Target = msg.From,
+    Action = 'Get-Cheese-Mints-By-Address-Response',
+    Data = json.encode(cheese_mints_by_address[address] or {})
+  })
+end)
 
 if not cheese_mint_collection_initialized then
   cheese_mint_collection_initialized = true
