@@ -46,6 +46,13 @@ function assertValidCheeseMintIcon(icon)
   -- TODO -> could validate txid further & allow ar:// style links
 end
 
+function assertValidCheeseMintCategory(category)
+  assert(category ~= nil, 'Cheese Mint category is required')
+  assert(type(category) == 'string', 'Cheese Mint category must be a string')
+  assert(category ~= '', 'Cheese Mint category cannot be empty')
+  assert(category:len() <= 100, 'Cheese Mint category cannot exceed 100 characters')
+end
+
 Handlers.add('Update-Roles', 'Update-Roles', function (msg)
   local json = require('json')
 
@@ -77,6 +84,8 @@ Handlers.add('Create-Cheese-Mint', 'Create-Cheese-Mint', function (msg)
   assertValidCheeseMintPoints(cheeseMintPoints)
   local cheeseMintIcon = msg.Tags['Icon']
   assertValidCheeseMintIcon(cheeseMintIcon)
+  local cheeseMintCategory = msg.Tags['Category'] or 'default'
+  assertValidCheeseMintCategory(cheeseMintCategory)
 
   cheese_mints_by_id[cheeseMintId] = {
     id = cheeseMintId,
@@ -85,7 +94,8 @@ Handlers.add('Create-Cheese-Mint', 'Create-Cheese-Mint', function (msg)
     name = cheeseMintName,
     description = cheeseMintDescription,
     points = cheeseMintPoints,
-    icon = cheeseMintIcon
+    icon = cheeseMintIcon,
+    category = cheeseMintCategory
   }
 
   ao.send({
@@ -106,14 +116,16 @@ Handlers.add('Update-Cheese-Mint', 'Update-Cheese-Mint', function (msg)
   local cheeseMintId = msg.Tags['Cheese-Mint-Id']
   assertValidCheeseMintId(cheeseMintId)
   local cheeseMintUpdatedBy = msg.From
-  local cheeseMintName = msg.Tags['Cheese-Mint-Name']
+  local cheeseMintName = msg.Tags['Cheese-Mint-Name'] or cheese_mints_by_id[cheeseMintId].name
   assertValidCheeseMintName(cheeseMintName)
-  local cheeseMintDescription = msg.Tags['Description']
+  local cheeseMintDescription = msg.Tags['Description'] or cheese_mints_by_id[cheeseMintId].description
   assertValidCheeseMintDescription(cheeseMintDescription)
-  local cheeseMintPoints = tonumber(msg.Tags['Points']) or 0
+  local cheeseMintPoints = tonumber(msg.Tags['Points']) or cheese_mints_by_id[cheeseMintId].points or 0
   assertValidCheeseMintPoints(cheeseMintPoints)
-  local cheeseMintIcon = msg.Tags['Icon']
+  local cheeseMintIcon = msg.Tags['Icon'] or cheese_mints_by_id[cheeseMintId].icon
   assertValidCheeseMintIcon(cheeseMintIcon)
+  local cheeseMintCategory = msg.Tags['Category'] or cheese_mints_by_id[cheeseMintId].category
+  assertValidCheeseMintCategory(cheeseMintCategory)
 
   local created_at = cheese_mints_by_id[cheeseMintId].created_at
   local created_by = cheese_mints_by_id[cheeseMintId].created_by
@@ -127,7 +139,8 @@ Handlers.add('Update-Cheese-Mint', 'Update-Cheese-Mint', function (msg)
     name = cheeseMintName,
     description = cheeseMintDescription,
     points = cheeseMintPoints,
-    icon = cheeseMintIcon
+    icon = cheeseMintIcon,
+    category = cheeseMintCategory
   }
 
   ao.send({
