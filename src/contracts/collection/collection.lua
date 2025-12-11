@@ -258,7 +258,10 @@ Handlers.add('Get-Cheese-Mints-By-Address', 'Get-Cheese-Mints-By-Address', funct
   ao.send({
     Target = msg.From,
     Action = 'Get-Cheese-Mints-By-Address-Response',
-    Data = json.encode(cheese_mints_by_address[address] or {})
+    Data = json.encode({
+      cheese_mints_by_address = cheese_mints_by_address[address] or {},
+      cheese_mints_by_id = cheese_mints_by_id
+    })
   })
 end)
 
