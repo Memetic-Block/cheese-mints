@@ -67,7 +67,17 @@ Handlers.add('Update-Roles', 'Update-Roles', function (msg)
   })
   ao.send({
     device = 'patch@1.0',
-    acl = acl
+    acl = acl.state
+  })
+end)
+
+Handlers.add('View-Roles', 'View-Roles', function (msg)
+  local json = require('json')
+
+  ao.send({
+    Target = msg.From,
+    Action = 'View-Roles-Response',
+    Data = json.encode(acl.state)
   })
 end)
 
@@ -249,17 +259,15 @@ end)
 
 Handlers.add('View-State', 'View-State', function (msg)
   local json = require('json')
-  local state = {
-    cheese_mints_by_id = cheese_mints_by_id,
-    cheese_mints_by_address = cheese_mints_by_address,
-    acl = acl.state,
-    owner = Owner
-  }
-
   ao.send({
     Target = msg.From,
     Action = 'View-State-Response',
-    Data = json.encode(state)
+    Data = json.encode({
+      cheese_mints_by_id = cheese_mints_by_id,
+      cheese_mints_by_address = cheese_mints_by_address,
+      acl = acl.state,
+      owner = Owner
+    })
   })
 end)
 
@@ -273,6 +281,19 @@ Handlers.add('Get-Cheese-Mints-By-Address', 'Get-Cheese-Mints-By-Address', funct
     Action = 'Get-Cheese-Mints-By-Address-Response',
     Data = json.encode({
       cheese_mints_by_address = cheese_mints_by_address[address] or {},
+      cheese_mints_by_id = cheese_mints_by_id
+    })
+  })
+end)
+
+Handlers.add('Info', 'Info', function (msg)
+  local json = require('json')
+  ao.send({
+    Target = msg.From,
+    Action = 'Info-Response',
+    Data = json.encode({
+      acl = acl.state,
+      owner = Owner,
       cheese_mints_by_id = cheese_mints_by_id
     })
   })
