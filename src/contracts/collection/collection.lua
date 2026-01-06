@@ -225,6 +225,54 @@ Handlers.add('Award-Cheese-Mint', 'Award-Cheese-Mint', function (msg)
   })
 end)
 
+Handlers.add('Bulk-Award-Cheese-Mint', 'Bulk-Award-Cheese-Mint', function (msg)
+  local json = require('json')
+
+  acl.utils.assertHasOneOfRole(msg.From, { 'owner', 'admin', 'Award-Cheese-Mint', 'Bulk-Award-Cheese-Mint' })
+
+  local data = json.decode(msg.Data)
+  assert(data ~= nil, 'Request body is required')
+  assert(data.awards ~= nil, 'Awards array is required')
+  assert(type(data.awards) == 'table', 'Awards must be an array')
+  assert(#data.awards > 0, 'Awards array cannot be empty')
+
+  -- Validate all awards first (fail-fast, without mutating state)
+  for i, award in ipairs(data.awards) do
+    assert(award.cheeseMintId ~= nil, 'Award #' .. i .. ': cheeseMintId is required')
+    assert(award.address ~= nil, 'Award #' .. i .. ': address is required')
+    assertValidCheeseMintId(award.cheeseMintId)
+    assertValidAddress(award.address)
+
+    local existingAwards = cheese_mints_by_address[award.address]
+    assert(
+      existingAwards == nil or existingAwards[award.cheeseMintId] == nil,
+      'Award #' .. i .. ': Address already has Cheese Mint with id ' .. tostring(award.cheeseMintId)
+    )
+  end
+
+  -- Apply all awards
+  for _, award in ipairs(data.awards) do
+    cheese_mints_by_address[award.address] = cheese_mints_by_address[award.address] or {}
+    cheese_mints_by_address[award.address][award.cheeseMintId] = {
+      awarded_by = msg.From,
+      awarded_at = msg.Timestamp,
+      message_id = msg.Id
+    }
+  end
+
+  ao.send({
+    Target = msg.From,
+    Action = 'Bulk-Cheese-Mint-Awarded',
+    Data = 'OK',
+    ['Awards-Count'] = tostring(#data.awards),
+    ['Awarded-At'] = tostring(msg.Timestamp)
+  })
+  ao.send({
+    device = 'patch@1.0',
+    cheese_mints_by_address = cheese_mints_by_address
+  })
+end)
+
 Handlers.add('Revoke-Cheese-Mint', 'Revoke-Cheese-Mint', function (msg)
   acl.utils.assertHasOneOfRole(msg.From, { 'owner', 'admin', 'Revoke-Cheese-Mint' })
 
