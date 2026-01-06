@@ -53,6 +53,29 @@ function assertValidCheeseMintCategory(category)
   assert(category:len() <= 100, 'Cheese Mint category cannot exceed 100 characters')
 end
 
+-- Award helper functions to reduce duplication between single and bulk award handlers
+
+function assertCanAwardCheeseMint(cheeseMintId, address, errorPrefix)
+  errorPrefix = errorPrefix or ''
+  assertValidCheeseMintId(cheeseMintId)
+  assertValidAddress(address)
+
+  local existingAwards = cheese_mints_by_address[address]
+  assert(
+    existingAwards == nil or existingAwards[cheeseMintId] == nil,
+    errorPrefix .. 'Address already has Cheese Mint with id ' .. tostring(cheeseMintId)
+  )
+end
+
+function applyAward(cheeseMintId, address, awardedBy, awardedAt, messageId)
+  cheese_mints_by_address[address] = cheese_mints_by_address[address] or {}
+  cheese_mints_by_address[address][cheeseMintId] = {
+    awarded_by = awardedBy,
+    awarded_at = awardedAt,
+    message_id = messageId
+  }
+end
+
 Handlers.add('Update-Roles', 'Update-Roles', function (msg)
   local json = require('json')
 
@@ -196,20 +219,10 @@ Handlers.add('Award-Cheese-Mint', 'Award-Cheese-Mint', function (msg)
   acl.utils.assertHasOneOfRole(msg.From, { 'owner', 'admin', 'Award-Cheese-Mint' })
 
   local cheeseMintId = msg.Tags['Cheese-Mint-Id']
-  assertValidCheeseMintId(cheeseMintId)
   local awardToAddress = msg.Tags['Award-To-Address']
-  assertValidAddress(awardToAddress)
 
-  cheese_mints_by_address[awardToAddress] = cheese_mints_by_address[awardToAddress] or {}
-  assert(
-    cheese_mints_by_address[awardToAddress][cheeseMintId] == nil,
-    'Address already has Cheese Mint with id ' .. tostring(cheeseMintId)
-  )
-  cheese_mints_by_address[awardToAddress][cheeseMintId] = {
-    awarded_by = msg.From,
-    awarded_at = msg.Timestamp,
-    message_id = msg.Id
-  }
+  assertCanAwardCheeseMint(cheeseMintId, awardToAddress)
+  applyAward(cheeseMintId, awardToAddress, msg.From, msg.Timestamp, msg.Id)
 
   ao.send({
     Target = msg.From,
@@ -217,6 +230,42 @@ Handlers.add('Award-Cheese-Mint', 'Award-Cheese-Mint', function (msg)
     Data = 'OK',
     ['Cheese-Mint-Id'] = cheeseMintId,
     ['Award-To-Address'] = awardToAddress,
+    ['Awarded-At'] = tostring(msg.Timestamp)
+  })
+  ao.send({
+    device = 'patch@1.0',
+    cheese_mints_by_address = cheese_mints_by_address
+  })
+end)
+
+Handlers.add('Bulk-Award-Cheese-Mint', 'Bulk-Award-Cheese-Mint', function (msg)
+  local json = require('json')
+
+  acl.utils.assertHasOneOfRole(msg.From, { 'owner', 'admin', 'Award-Cheese-Mint', 'Bulk-Award-Cheese-Mint' })
+
+  local data = json.decode(msg.Data)
+  assert(data ~= nil, 'Request body is required')
+  assert(data.awards ~= nil, 'Awards array is required')
+  assert(type(data.awards) == 'table', 'Awards must be an array')
+  assert(#data.awards > 0, 'Awards array cannot be empty')
+
+  -- Validate all awards first (fail-fast, without mutating state)
+  for i, award in ipairs(data.awards) do
+    assert(award.cheeseMintId ~= nil, 'Award #' .. i .. ': cheeseMintId is required')
+    assert(award.address ~= nil, 'Award #' .. i .. ': address is required')
+    assertCanAwardCheeseMint(award.cheeseMintId, award.address, 'Award #' .. i .. ': ')
+  end
+
+  -- Apply all awards
+  for _, award in ipairs(data.awards) do
+    applyAward(award.cheeseMintId, award.address, msg.From, msg.Timestamp, msg.Id)
+  end
+
+  ao.send({
+    Target = msg.From,
+    Action = 'Bulk-Cheese-Mint-Awarded',
+    Data = 'OK',
+    ['Awards-Count'] = tostring(#data.awards),
     ['Awarded-At'] = tostring(msg.Timestamp)
   })
   ao.send({
