@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "Jim Toth",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "type": "commonjs",
   "dependencies": {
     "@permaweb/ao-loader": "^0.0.49",
